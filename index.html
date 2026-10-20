@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Grand Meridian Theatre – Ticket Selection</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <h1>Grand Meridian Theatre</h1>
+      <p>Choose your seats: click a seat to inspect it, then press <strong>ADD TO CART</strong>.</p>
+    </div>
+    <a class="header-cart" href="#cart-title" aria-label="Go to cart">
+      <span>Cart</span>
+      <strong id="header-count">0</strong>
+      <span class="sep">·</span>
+      <strong id="header-total">$0</strong>
+    </a>
+  </header>
+
+  <main class="layout">
+    <section class="map-panel" aria-labelledby="map-title">
+      <div class="panel-head">
+        <h2 id="map-title">Venue map</h2>
+        <span class="zoom-readout">Zoom <output id="zoom-readout" for="viewport">100%</output></span>
+      </div>
+
+      <div class="controls" role="group" aria-label="Map navigation controls">
+        <div class="zoom-group">
+          <button type="button" class="btn" data-action="zoom-in" title="Zoom In">＋ Zoom In</button>
+          <button type="button" class="btn" data-action="zoom-out" title="Zoom Out">－ Zoom Out</button>
+          <button type="button" class="btn btn-reset" data-action="reset" title="Reset / Center View">⌖ Reset / Center View</button>
+        </div>
+        <div class="dpad" role="group" aria-label="Move the map">
+          <button type="button" class="btn dpad-up" data-action="move-up" aria-label="Move Up" title="Move Up">▲</button>
+          <button type="button" class="btn dpad-left" data-action="move-left" aria-label="Move Left" title="Move Left">◀</button>
+          <span class="dpad-mid" aria-hidden="true">Move</span>
+          <button type="button" class="btn dpad-right" data-action="move-right" aria-label="Move Right" title="Move Right">▶</button>
+          <button type="button" class="btn dpad-down" data-action="move-down" aria-label="Move Down" title="Move Down">▼</button>
+        </div>
+      </div>
+
+      <div id="viewport" class="viewport" role="group" aria-label="Seating map. Use the controls above, the mouse wheel to zoom, or drag to pan.">
+        <div id="world" class="world"></div>
+      </div>
+
+      <div class="legend-wrap">
+        <h3 class="legend-title">Price categories</h3>
+        <ul id="legend-categories" class="legend"></ul>
+        <h3 class="legend-title">Seat states</h3>
+        <ul id="legend-states" class="legend">
+          <li><span class="swatch st-available"></span> Available</li>
+          <li><span class="swatch st-inspected"></span> Inspected</li>
+          <li><span class="swatch st-incart">✓</span> In cart</li>
+          <li><span class="swatch st-unavailable">×</span> Unavailable</li>
+        </ul>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="card" aria-labelledby="details-title">
+        <h2 id="details-title">Seat details</h2>
+        <div id="details-body" aria-live="polite"></div>
+      </section>
+
+      <section class="card" aria-labelledby="cart-title">
+        <h2 id="cart-title">Your cart</h2>
+        <ul id="cart-list" class="cart-list"></ul>
+        <div class="cart-total">
+          <span><span id="cart-count">0</span> ticket(s)</span>
+          <span>Total: <strong id="cart-total">$0</strong></span>
+        </div>
+        <button type="button" id="clear-cart" class="btn btn-ghost">Clear cart</button>
+        <p id="storage-note" class="note" hidden></p>
+      </section>
+    </aside>
+  </main>
+
+  <p id="status" class="sr-only" role="status" aria-live="polite"></p>
+
+  <script src="venue-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
