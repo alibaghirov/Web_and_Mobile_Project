@@ -97,5 +97,106 @@
     cart: [],                         
     view: { scale: 1, x: 0, y: 0, min: 0.2, max: 3, fit: 1, isDefault: true }
   };
+  const seatEls = new Map();
+ 
+  const viewport = $('#viewport');
+  const world = $('#world');
+  const detailsBody = $('#details-body');
+  const cartList = $('#cart-list');
+  const statusLive = $('#status');
+
+  function renderVenue() {
+    world.style.width = WORLD_W + 'px';
+    world.style.height = WORLD_H + 'px';
+    document.documentElement.style.setProperty('--seat', SEAT + 'px');
+ 
+    const frag = document.createDocumentFragment();
+ 
+    const st = VENUE.stage;
+    frag.appendChild(el('div', {
+      class: 'stage', text: st.label,
+      style: { left: st.x + 'px', top: st.y + 'px', width: st.width + 'px', height: st.height + 'px' }
+    }));
+ 
+    VENUE.landmarks.forEach((lm) => {
+      frag.appendChild(el('div', {
+        class: 'landmark', text: lm.label,
+        style: { left: lm.x + 'px', top: lm.y + 'px', width: lm.width + 'px', height: lm.height + 'px' }
+      }));
+    });
+ 
+    model.sections.forEach((section) => {
+      const minY = Math.min.apply(null, section.seats.map((s) => s.y));
+      frag.appendChild(el('div', {
+        class: 'section-label',
+        style: { left: (section.def.x + section.width / 2) + 'px', top: (minY - 36) + 'px' }
+      }, [
+        section.def.name,
+        el('small', { text: section.category.label + ' · ' + money(section.category.price) })
+      ]));
+ 
+      for (let r = 0; r < section.def.rows; r++) {
+        const rowFirst = section.seats[r * section.def.cols];
+        frag.appendChild(el('div', {
+          class: 'row-label', text: rowFirst.row,
+          style: { left: (rowFirst.x - 20) + 'px', top: rowFirst.y + 'px' }
+        }));
+      }
+ 
+      section.seats.forEach((seat) => {
+        const btn = el('button', {
+          type: 'button',
+          class: 'seat',
+          dataset: { id: seat.id },
+          style: { left: seat.x + 'px', top: seat.y + 'px' }
+        });
+        btn.style.setProperty('--cat-color', seat.color);
+        seatEls.set(seat.id, btn);
+        frag.appendChild(btn);
+        updateSeat(seat.id);
+      });
+    });
+ 
+    world.appendChild(frag);
+  }
+ 
+  function seatLabel(seat) {
+    return seat.sectionName + ', row ' + seat.row + ', seat ' + seat.number;
+  }
+ 
+  function seatStatus(seat) {
+    if (seat.unavailable) return 'unavailable';
+    if (state.cart.indexOf(seat.id) !== -1) return 'incart';
+    return 'available';
+  }
+ 
+  const STATUS_TEXT = { available: 'Available', incart: 'In your cart', unavailable: 'Unavailable' };
+ 
+  function updateSeat(id) {
+    if (!id) return;
+    const seat = model.byId.get(id);
+    const btn = seatEls.get(id);
+    if (!seat || !btn) return;
+    const status = seatStatus(seat);
+    const inspected = state.inspectedId === id;
+    btn.dataset.state = status;
+    btn.classList.toggle('is-inspected', inspected);
+    btn.setAttribute('aria-pressed', inspected ? 'true' : 'false');
+    const label = seatLabel(seat) + ', ' + money(seat.price) + ', ' + STATUS_TEXT[status].toLowerCase();
+    btn.setAttribute('aria-label', label);
+    btn.title = label;
+  }
+ 
+  function renderLegend() {
+    const ul = $('#legend-categories');
+    Object.keys(VENUE.categories).forEach((key) => {
+      const cat = VENUE.categories[key];
+      const sw = el('span', { class: 'swatch' });
+      sw.style.setProperty('--cat-color', cat.color);
+      ul.appendChild(el('li', null, [sw, cat.label + ' – ' + money(cat.price)]));
+    });
+  }
+ 
+  
 })();
  
