@@ -196,7 +196,76 @@
       ul.appendChild(el('li', null, [sw, cat.label + ' – ' + money(cat.price)]));
     });
   }
+ /* ------------------------------------------------------
+     4. Seat inspection (click = inspect only)
+     ------------------------------------------------------ */
+  function inspect(id) {
+    const previous = state.inspectedId;
+    state.inspectedId = id;
+    updateSeat(previous);
+    updateSeat(id);
+    renderDetails();
+    if (id) {
+      const seat = model.byId.get(id);
+      announce(seatLabel(seat) + ', ' + money(seat.price) + ', ' + STATUS_TEXT[seatStatus(seat)].toLowerCase());
+    }
+  }
  
+  function renderDetails(message) {
+    detailsBody.replaceChildren();
+    const seat = state.inspectedId ? model.byId.get(state.inspectedId) : null;
+ 
+    if (!seat) {
+      detailsBody.appendChild(el('p', { class: 'empty', text: 'Click any seat on the map to see its details and price. Nothing is added until you press ADD TO CART.' }));
+      return;
+    }
+ 
+    const status = seatStatus(seat);
+    const catDot = el('span', { class: 'cat-dot' });
+    catDot.style.setProperty('--cat-color', seat.color);
+ 
+    const dl = el('dl', { class: 'detail-list' }, [
+      el('dt', { text: 'Section' }), el('dd', { text: seat.sectionName }),
+      el('dt', { text: 'Row' }), el('dd', { text: seat.row }),
+      el('dt', { text: 'Seat' }), el('dd', { text: String(seat.number) }),
+      el('dt', { text: 'Category' }), el('dd', null, [catDot, seat.categoryLabel]),
+      el('dt', { text: 'Price' }), el('dd', { class: 'price-big', text: money(seat.price) }),
+      el('dt', { text: 'Status' }), el('dd', null, [
+        el('span', { class: 'badge', dataset: { state: status }, text: STATUS_TEXT[status] })
+      ])
+    ]);
+    detailsBody.appendChild(dl);
+ 
+    const actions = el('div', { class: 'detail-actions' });
+    const addBtn = el('button', { type: 'button', class: 'btn btn-primary', id: 'add-to-cart', text: 'ADD TO CART' });
+    if (status === 'unavailable') {
+      addBtn.disabled = true;
+      addBtn.textContent = 'UNAVAILABLE';
+    } else if (status === 'incart') {
+      addBtn.disabled = true;
+      addBtn.textContent = 'ALREADY IN CART';
+    }
+    addBtn.addEventListener('click', () => addToCart(seat.id));
+    actions.appendChild(addBtn);
+ 
+    if (status === 'incart') {
+      const rm = el('button', { type: 'button', class: 'btn btn-danger', text: 'Remove from cart' });
+      rm.addEventListener('click', () => removeFromCart(seat.id));
+      actions.appendChild(rm);
+    }
+    detailsBody.appendChild(actions);
+ 
+    if (message) {
+      detailsBody.appendChild(el('p', { class: 'message ' + (message.kind || ''), text: message.text }));
+    }
+  }
+ 
+  function announce(text) {
+    statusLive.textContent = '';
+    statusLive.textContent = text;
+  }
+ 
+  
   
 })();
  
