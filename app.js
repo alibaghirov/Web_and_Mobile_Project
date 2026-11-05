@@ -472,7 +472,100 @@
   let drag = null;
   let suppressClick = false;
  
-  
+  function setupMouseNavigation() {
+    viewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const rect = viewport.getBoundingClientRect();
+      zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX - rect.left, e.clientY - rect.top);
+    }, { passive: false });
+ 
+    viewport.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y, moved: false };
+    });
+ 
+    viewport.addEventListener('pointermove', (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const dx = e.clientX - drag.sx;
+      const dy = e.clientY - drag.sy;
+      if (!drag.moved) {
+        if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;   // still a click
+        drag.moved = true;
+        viewport.classList.add('dragging');
+        try { viewport.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      }
+      view.x = drag.vx + dx;
+      view.y = drag.vy + dy;
+      view.isDefault = false;
+      applyView();
+    });
+ 
+    function endDrag(e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      if (drag.moved) {
+        suppressClick = true;                 // a drag must not select a seat
+        setTimeout(() => { suppressClick = false; }, 0);
+      }
+      viewport.classList.remove('dragging');
+      drag = null;
+    }
+    viewport.addEventListener('pointerup', endDrag);
+    viewport.addEventListener('pointercancel', endDrag);
+ 
+    // Capture phase: block the click that follows a drag
+    viewport.addEventListener('click', (e) => {
+      if (suppressClick) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+    }, true);
+  }
+ 
+  /* ------------------------------------------------------
+     7. Wiring
+     ------------------------------------------------------ */
+  function init() {
+    renderVenue();
+    renderLegend();
+ 
+    // Seat clicks (event delegation) => inspect only
+    world.addEventListener('click', (e) => {
+      const btn = e.target.closest('.seat');
+      if (btn) inspect(btn.dataset.id);
+    });
+ 
+    // Navigation buttons
+    document.querySelector('.controls').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-action]');
+      if (btn && ACTIONS[btn.dataset.action]) ACTIONS[btn.dataset.action]();
+    });
+ 
+    $('#clear-cart').addEventListener('click', clearCart);
+ 
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && state.inspectedId) inspect(null);
+    });
+ 
+    setupMouseNavigation();
+ 
+    // Restore cart + matching seat states
+    state.cart = loadCart();
+    state.cart.forEach(updateSeat);
+    saveCart();                       // writes back a cleaned-up cart if needed
+    renderCart();
+    renderDetails();
+ 
+    // Initial view + keep it sensible on resize
+    resetView();
+    const onResize = () => {
+      computeLimits();
+      if (view.isDefault) resetView(); else applyView();
+    };
+    if ('ResizeObserver' in window) new ResizeObserver(onResize).observe(viewport);
+    window.addEventListener('resize', onResize);
+  }
+ 
+  init();
 
   
 })();
