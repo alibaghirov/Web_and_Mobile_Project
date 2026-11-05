@@ -386,7 +386,94 @@
     return valid;
   }
  
+  /* ------------------------------------------------------
+     6. Map navigation: zoom / pan / reset
+     ------------------------------------------------------ */
+  const view = state.view;
+ 
+  function clampAxis(pos, viewportSize, contentSize) {
+    let lo, hi;
+    if (contentSize + 2 * PAN_MARGIN > viewportSize) {
+      lo = viewportSize - contentSize - PAN_MARGIN;
+      hi = PAN_MARGIN;
+    } else {
+      lo = PAN_MARGIN;
+      hi = viewportSize - contentSize - PAN_MARGIN;
+    }
+    return Math.min(hi, Math.max(lo, pos));
+  }
+ 
+  function clampView() {
+    view.scale = Math.min(view.max, Math.max(view.min, view.scale));
+    view.x = clampAxis(view.x, viewport.clientWidth, WORLD_W * view.scale);
+    view.y = clampAxis(view.y, viewport.clientHeight, WORLD_H * view.scale);
+  }
+ 
+  function applyView() {
+    clampView();
+    world.style.transform = 'translate(' + view.x + 'px,' + view.y + 'px) scale(' + view.scale + ')';
+    $('#zoom-readout').textContent = Math.round((view.scale / view.fit) * 100) + '%';
+    document.querySelector('[data-action="zoom-in"]').disabled = view.scale >= view.max - 1e-6;
+    document.querySelector('[data-action="zoom-out"]').disabled = view.scale <= view.min + 1e-6;
+  }
+ 
+  function computeLimits() {
+    const w = viewport.clientWidth || 800;
+    const h = viewport.clientHeight || 600;
+    view.fit = Math.min(w / WORLD_W, h / WORLD_H) * 0.98;
+    view.min = view.fit * 0.6;
+    view.max = Math.max(3, view.fit * 4);
+  }
+ 
+  function resetView() {
+    computeLimits();
+    view.scale = view.fit;
+    view.x = (viewport.clientWidth - WORLD_W * view.scale) / 2;
+    view.y = (viewport.clientHeight - WORLD_H * view.scale) / 2;
+    view.isDefault = true;
+    applyView();
+  }
+ 
+  // Zoom keeping the screen point (cx, cy) fixed
+  function zoomAt(factor, cx, cy) {
+    const newScale = Math.min(view.max, Math.max(view.min, view.scale * factor));
+    const ratio = newScale / view.scale;
+    view.x = cx - (cx - view.x) * ratio;
+    view.y = cy - (cy - view.y) * ratio;
+    view.scale = newScale;
+    view.isDefault = false;
+    applyView();
+  }
+ 
+  function zoomCenter(factor) {
+    zoomAt(factor, viewport.clientWidth / 2, viewport.clientHeight / 2);
+  }
+ 
+  // "Move Up" moves the camera up, so the map slides down (and so on)
+  function panBy(dx, dy) {
+    view.x += dx;
+    view.y += dy;
+    view.isDefault = false;
+    applyView();
+  }
+ 
+  const ACTIONS = {
+    'zoom-in': () => zoomCenter(ZOOM_STEP),
+    'zoom-out': () => zoomCenter(1 / ZOOM_STEP),
+    'move-up': () => panBy(0, PAN_STEP),
+    'move-down': () => panBy(0, -PAN_STEP),
+    'move-left': () => panBy(PAN_STEP, 0),
+    'move-right': () => panBy(-PAN_STEP, 0),
+    'reset': resetView
+  };
+ 
+  /* ---------- Bonus: mouse wheel zoom + drag panning ---------- */
+  const DRAG_THRESHOLD = 5;
+  let drag = null;
+  let suppressClick = false;
+ 
   
+
   
 })();
  
