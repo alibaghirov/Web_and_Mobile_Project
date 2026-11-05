@@ -265,6 +265,127 @@
     statusLive.textContent = text;
   }
  
+  /* ------------------------------------------------------
+     5. Cart (add / remove / render / persist)
+     ------------------------------------------------------ */
+  function addToCart(id) {
+    const seat = model.byId.get(id);
+    if (!seat) return;
+ 
+    if (seat.unavailable) {
+      renderDetails({ kind: 'error', text: 'This seat is unavailable and cannot be added.' });
+      return;
+    }
+    if (state.cart.indexOf(id) !== -1) {            // duplicate prevention
+      renderDetails({ kind: 'error', text: 'This seat is already in your cart.' });
+      return;
+    }
+ 
+    state.cart.push(id);
+    saveCart();
+    updateSeat(id);
+    renderCart();
+    renderDetails({ kind: 'ok', text: seatLabel(seat) + ' added to cart.' });
+    announce(seatLabel(seat) + ' added to cart. Total ' + money(cartTotal()));
+  }
+ 
+  function removeFromCart(id) {
+    const index = state.cart.indexOf(id);
+    if (index === -1) return;
+    state.cart.splice(index, 1);
+    saveCart();
+    updateSeat(id);                                 // map updates immediately
+    renderCart();
+    if (state.inspectedId === id) {
+      renderDetails({ kind: '', text: 'Ticket removed from cart.' });
+    }
+    announce('Ticket removed. Total ' + money(cartTotal()));
+  }
+ 
+  function clearCart() {
+    const ids = state.cart.slice();
+    state.cart = [];
+    saveCart();
+    ids.forEach(updateSeat);
+    renderCart();
+    if (state.inspectedId) renderDetails();
+    announce('Cart cleared.');
+  }
+ 
+  function cartTotal() {
+    return state.cart.reduce((sum, id) => sum + model.byId.get(id).price, 0);
+  }
+ 
+  function renderCart() {
+    cartList.replaceChildren();
+ 
+    if (state.cart.length === 0) {
+      cartList.appendChild(el('li', { class: 'empty', text: 'Your cart is empty.' }));
+    }
+ 
+    state.cart.forEach((id) => {
+      const seat = model.byId.get(id);
+      const item = el('li', { class: 'cart-item' }, [
+        el('span', { class: 'name', text: seat.sectionName + ' · Row ' + seat.row + ' · Seat ' + seat.number }),
+        el('span', { class: 'price', text: money(seat.price) }),
+        el('span', { class: 'meta', text: seat.categoryLabel })
+      ]);
+      item.style.setProperty('--cat-color', seat.color);
+      const rm = el('button', {
+        type: 'button', class: 'btn btn-small btn-danger', text: 'Remove',
+        'aria-label': 'Remove ' + seatLabel(seat) + ' from cart'
+      });
+      rm.addEventListener('click', () => removeFromCart(id));
+      item.appendChild(rm);
+      cartList.appendChild(item);
+    });
+ 
+    const total = cartTotal();
+    $('#cart-count').textContent = String(state.cart.length);
+    $('#cart-total').textContent = money(total);
+    $('#header-count').textContent = String(state.cart.length);
+    $('#header-total').textContent = money(total);
+    $('#clear-cart').disabled = state.cart.length === 0;
+  }
+ 
+  /* ---------- localStorage ---------- */
+  function showStorageNote(text) {
+    const note = $('#storage-note');
+    note.textContent = text;
+    note.hidden = !text;
+  }
+ 
+  function saveCart() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, items: state.cart }));
+      showStorageNote('');
+    } catch (err) {
+      showStorageNote('Your browser blocked storage, so the cart will not survive a refresh.');
+    }
+  }
+ 
+  function loadCart() {
+    let list = [];
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      const data = JSON.parse(raw);
+      list = Array.isArray(data) ? data : (data && Array.isArray(data.items) ? data.items : []);
+    } catch (err) {
+      return [];                                     // corrupt data => start empty
+    }
+    const seen = new Set();
+    const valid = [];
+    list.forEach((id) => {
+      const seat = typeof id === 'string' ? model.byId.get(id) : null;
+      if (seat && !seat.unavailable && !seen.has(id)) {   // ignore unknown, unavailable, duplicates
+        seen.add(id);
+        valid.push(id);
+      }
+    });
+    return valid;
+  }
+ 
   
   
 })();
